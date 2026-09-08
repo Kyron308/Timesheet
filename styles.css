@@ -1,0 +1,147 @@
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #15171a;
+  --muted: #69707a;
+  --border: #d7dbe0;
+  --primary: #0b5fff;
+  --primary-soft: #e7efff;
+  --danger: #b42318;
+  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.05);
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  min-height: 100%;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+button, input, textarea, select { font: inherit; }
+button { min-height: 44px; }
+input, textarea, select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 16px;
+}
+textarea { resize: vertical; }
+input:focus, textarea:focus, button:focus-visible, [contenteditable="true"]:focus { outline: 3px solid rgba(11,95,255,.22); outline-offset: 1px; }
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  background: rgba(245,246,248,.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.app-header h1 { margin: 0; font-size: 22px; }
+.status-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 12px; }
+.badge { display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border-radius: 999px; background: #e9f7ef; color: #136c3f; font-weight: 650; }
+.badge.online { background: #e9f1ff; color: #174ea6; }
+.muted { color: var(--muted); }
+.icon-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); font-size: 22px; }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 12px 0; max-width: 900px; margin: 0 auto; }
+.tab { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 8px; color: var(--muted); }
+.tab.active { background: var(--primary); border-color: var(--primary); color: white; font-weight: 700; }
+main { max-width: 900px; margin: 0 auto; padding: 12px; }
+.view { display: none; }
+.view.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 16px; }
+.current-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--muted); }
+.timer { font-variant-numeric: tabular-nums; font-weight: 800; background: var(--primary-soft); padding: 10px 12px; border-radius: 12px; white-space: nowrap; }
+.field { margin-top: 14px; }
+.field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.field-grid { display: grid; gap: 12px; }
+.field-grid.two { grid-template-columns: 1fr 1fr; }
+.field-actions-bottom { display: flex; align-items: end; }
+.help { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+.gps-readout { font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+.action-row { display: flex; gap: 8px; margin-top: 16px; }
+.action-row.wrap { flex-wrap: wrap; }
+.primary-btn, .secondary-btn, .ghost-btn, .danger-btn, .file-button {
+  border-radius: 12px;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  text-align: center;
+}
+.primary-btn { background: var(--primary); color: white; }
+.secondary-btn, .file-button { background: var(--primary-soft); color: #174ea6; border-color: #c9d9ff; }
+.ghost-btn { background: white; color: var(--text); border-color: var(--border); }
+.danger-btn { background: #fff0ef; color: var(--danger); border-color: #f3b7b2; }
+button:disabled { opacity: .45; }
+.full { width: 100%; }
+.message { min-height: 18px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+.section-head { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin: 20px 2px 10px; }
+.section-head h2 { margin: 0; font-size: 20px; }
+.total-box { text-align: right; }
+.total-box span { display:block; font-size: 11px; color: var(--muted); }
+.entry-list { display: grid; gap: 10px; }
+.entry-card { text-align:left; color:inherit; font:inherit; display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: start; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 10px; cursor: pointer; }
+.entry-card.no-photo { grid-template-columns: 1fr auto; }
+.entry-thumb { width:72px; height:72px; border-radius:12px; object-fit:cover; background:#eee; }
+.entry-title { font-weight: 800; }
+.entry-meta, .entry-desc { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.entry-desc { font-size: 13px; color: #3d4248; }
+.entry-hours { font-weight: 800; white-space: nowrap; }
+.photo-strip { display: flex; gap: 8px; overflow-x: auto; margin-top: 10px; padding-bottom: 2px; }
+.photo-item { position: relative; flex: 0 0 auto; }
+.photo-item img { width: 92px; height: 92px; object-fit: cover; border-radius: 12px; border:1px solid var(--border); }
+.photo-remove { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; min-height: 30px; border-radius: 999px; border: 0; background: rgba(0,0,0,.68); color: white; }
+.filter-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 12px; }
+.filter-row label { font-size: 12px; font-weight: 700; }
+.sheet-controls { background: var(--card); border:1px solid var(--border); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+.print-wrap { overflow-x: auto; background: #dfe2e6; padding: 10px; border-radius: 12px; }
+.timesheet-paper { min-width: 1120px; background: white; padding: 8px; color: #111; }
+.timesheet-table { width:100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
+.timesheet-table th, .timesheet-table td { border: 1px solid #111; padding: 5px 6px; height: 27px; vertical-align: middle; overflow-wrap: anywhere; }
+.timesheet-table th { font-weight: 800; text-align: center; }
+.timesheet-table th:first-child { text-align: left; }
+.timesheet-table td:first-child { font-weight: 650; width: 250px; }
+.timesheet-table .notes-col { width: 300px; }
+.timesheet-table .section-row td { font-weight: 800; text-align: center; background:#f6f6f6; }
+.timesheet-table .total-row td { font-weight: 800; }
+.timesheet-table .editable { background: #fffdf2; }
+.timesheet-table [contenteditable="true"] { cursor: text; }
+.edit-dialog { width: min(680px, calc(100% - 20px)); max-height: 90%; border: 0; border-radius: 18px; padding: 0; box-shadow: 0 24px 80px rgba(0,0,0,.28); }
+.edit-dialog::backdrop { background: rgba(0,0,0,.45); }
+.edit-dialog form { padding: 16px; }
+.dialog-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.dialog-head h2 { margin:0; font-size:20px; }
+.dialog-actions { display:flex; align-items:center; gap:8px; margin-top:18px; }
+.grow { flex:1; }
+.file-button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; cursor:pointer; }
+@media (max-width: 640px) {
+  .field-grid.two, .filter-row { grid-template-columns: 1fr; }
+  .entry-card { grid-template-columns: 64px 1fr; }
+  .entry-card.no-photo { grid-template-columns: 1fr; }
+  .entry-thumb { width:64px; height:64px; }
+  .entry-hours { grid-column: 2; }
+  .entry-card.no-photo .entry-hours { grid-column: 1; }
+  .action-row > * { flex: 1 1 auto; }
+}
+@media print {
+  @page { size: A4 landscape; margin: 7mm; }
+  html, body { background: #fff; }
+  body { padding:0; }
+  .no-print, dialog { display:none !important; }
+  main { max-width:none; padding:0; margin:0; }
+  #view-sheet { display:block !important; }
+  .print-wrap { overflow:visible; background:#fff; padding:0; }
+  .timesheet-paper { min-width:0; width:100%; padding:0; }
+  .timesheet-table { font-size: 8.5pt; }
+  .timesheet-table th, .timesheet-table td { padding: 2.2mm 1.4mm; height: 6.2mm; }
+  .timesheet-table .editable { background:#fff !important; }
+}

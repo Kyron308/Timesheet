@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b5fff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Timesheet" />
+  <title>Offline Photo Timesheet</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header no-print">
+    <div>
+      <h1>Photo Timesheet</h1>
+      <div class="status-row">
+        <span id="offlineBadge" class="badge">Offline ready</span>
+        <span id="saveStatus" class="muted">Saved on this iPhone</span>
+      </div>
+    </div>
+    <button id="openSettingsBtn" class="icon-btn" type="button" aria-label="Open settings">⚙︎</button>
+  </header>
+
+  <nav class="tabs no-print" aria-label="Main sections">
+    <button class="tab active" data-view="log" type="button">Log work</button>
+    <button class="tab" data-view="history" type="button">History</button>
+    <button class="tab" data-view="sheet" type="button">Weekly sheet</button>
+  </nav>
+
+  <main>
+    <section id="view-log" class="view active no-print">
+      <div class="card current-job-card">
+        <div class="current-top">
+          <div>
+            <div class="eyebrow">CURRENT JOB</div>
+            <div id="currentStatus" class="muted">Take a photo or tap Start.</div>
+          </div>
+          <div id="liveTimer" class="timer">00:00:00</div>
+        </div>
+
+        <div id="currentPhotoStrip" class="photo-strip"></div>
+
+        <div class="field">
+          <label for="currentPhotos">Photos</label>
+          <input id="currentPhotos" type="file" accept="image/*" capture="environment" multiple />
+          <div class="help">Taking/selecting a photo starts the timer automatically.</div>
+        </div>
+
+        <div class="field">
+          <label for="currentTitle">Title</label>
+          <input id="currentTitle" type="text" placeholder="e.g. General Kasandi maintenance" autocomplete="off" />
+        </div>
+
+        <div class="field">
+          <label for="currentDescription">Description / notes</label>
+          <textarea id="currentDescription" rows="3" placeholder="What did you do?"></textarea>
+        </div>
+
+        <div class="field-grid two">
+          <div class="field">
+            <label for="currentLocation">Location</label>
+            <input id="currentLocation" type="text" placeholder="e.g. Kasandi, workshop, site" />
+          </div>
+          <div class="field field-actions-bottom">
+            <button id="gpsBtn" type="button" class="secondary-btn full">Use current GPS</button>
+          </div>
+        </div>
+
+        <div id="gpsReadout" class="gps-readout muted"></div>
+
+        <div class="field">
+          <label for="currentEquipment">Machinery / equipment</label>
+          <input id="currentEquipment" type="text" list="equipmentList" placeholder="None or type your own" />
+        </div>
+
+        <datalist id="equipmentList">
+          <option value="Posi track"></option>
+          <option value="Kasandi Truck"></option>
+          <option value="Manitou"></option>
+          <option value="Small Excavator - 5 tonne Kubota"></option>
+          <option value="Small Excavator - Micks"></option>
+          <option value="20 Tonne Excavator"></option>
+          <option value="Generator - Big"></option>
+          <option value="Generator - Small"></option>
+          <option value="Poly Welder 315"></option>
+          <option value="Poly Welder 500"></option>
+          <option value="Poly Welder 630"></option>
+        </datalist>
+
+        <div class="action-row">
+          <button id="startBtn" type="button" class="secondary-btn">Start</button>
+          <button id="finishBtn" type="button" class="primary-btn" disabled>Finish & save</button>
+          <button id="cancelBtn" type="button" class="ghost-btn" disabled>Cancel</button>
+        </div>
+        <div id="currentMessage" class="message" aria-live="polite"></div>
+      </div>
+
+      <div class="section-head">
+        <div>
+          <h2>Today</h2>
+          <div id="todayLabel" class="muted"></div>
+        </div>
+        <div class="total-box">
+          <span>Total</span>
+          <strong id="todayTotal">0h 00m</strong>
+        </div>
+      </div>
+      <div id="todayEntries" class="entry-list"></div>
+    </section>
+
+    <section id="view-history" class="view no-print">
+      <div class="section-head">
+        <div>
+          <h2>History</h2>
+          <div class="muted">Tap any entry to edit everything.</div>
+        </div>
+      </div>
+      <div class="filter-row">
+        <label>
+          From
+          <input id="historyFrom" type="date" />
+        </label>
+        <label>
+          To
+          <input id="historyTo" type="date" />
+        </label>
+        <button id="clearHistoryFilter" type="button" class="secondary-btn">Clear</button>
+      </div>
+      <div id="historyEntries" class="entry-list"></div>
+    </section>
+
+    <section id="view-sheet" class="view">
+      <div class="sheet-controls no-print">
+        <div class="field-grid two">
+          <div class="field">
+            <label for="employeeName">Employee</label>
+            <input id="employeeName" type="text" />
+          </div>
+          <div class="field">
+            <label for="weekEnding">Week ending (Friday)</label>
+            <input id="weekEnding" type="date" />
+          </div>
+        </div>
+        <div class="action-row wrap">
+          <button id="refreshSheetBtn" type="button" class="secondary-btn">Reset sheet from entries</button>
+          <button id="saveSheetEditsBtn" type="button" class="secondary-btn">Save sheet edits</button>
+          <button id="printBtn" type="button" class="primary-btn">Print / Save PDF</button>
+        </div>
+        <div class="help">Every white cell in the sheet is editable. Saved sheet edits are stored on this phone for that week.</div>
+      </div>
+
+      <div class="print-wrap">
+        <div id="timesheetPrint" class="timesheet-paper" aria-label="Editable weekly timesheet">
+          <table class="timesheet-table">
+            <thead>
+              <tr>
+                <th id="sheetEmployee" class="editable" contenteditable="true">Employee</th>
+                <th class="notes-col">NOTES</th>
+                <th>MON</th>
+                <th>TUE</th>
+                <th>WED</th>
+                <th>THU</th>
+                <th>FRI</th>
+                <th>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody id="timesheetBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="editDialog" class="edit-dialog">
+    <form id="editForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Edit work entry</h2>
+          <div class="muted">All fields can be changed.</div>
+        </div>
+        <button id="closeEditBtn" type="button" class="icon-btn" aria-label="Close">×</button>
+      </div>
+
+      <input id="editId" type="hidden" />
+      <div class="field-grid two">
+        <div class="field"><label for="editDate">Date</label><input id="editDate" type="date" required /></div>
+        <div class="field"><label for="editBreak">Break / time off (minutes)</label><input id="editBreak" type="number" min="0" step="1" value="0" /></div>
+      </div>
+      <div class="field-grid two">
+        <div class="field"><label for="editStart">Start</label><input id="editStart" type="time" required /></div>
+        <div class="field"><label for="editFinish">Finish</label><input id="editFinish" type="time" required /></div>
+      </div>
+      <div class="field">
+        <label for="editOverride">Manual total hours override (optional)</label>
+        <input id="editOverride" type="number" min="0" step="0.01" placeholder="Leave blank to calculate automatically" />
+      </div>
+      <div class="field"><label for="editTitle">Title</label><input id="editTitle" type="text" required /></div>
+      <div class="field"><label for="editDescription">Description / notes</label><textarea id="editDescription" rows="3"></textarea></div>
+      <div class="field"><label for="editLocation">Location</label><input id="editLocation" type="text" /></div>
+      <div class="field-grid two">
+        <div class="field"><label for="editLat">Latitude</label><input id="editLat" type="number" step="any" /></div>
+        <div class="field"><label for="editLng">Longitude</label><input id="editLng" type="number" step="any" /></div>
+      </div>
+      <div class="field"><label for="editEquipment">Machinery / equipment</label><input id="editEquipment" type="text" list="equipmentList" /></div>
+
+      <div class="field">
+        <label>Add / replace photos</label>
+        <input id="editNewPhotos" type="file" accept="image/*" capture="environment" multiple />
+      </div>
+      <div id="editPhotoStrip" class="photo-strip"></div>
+
+      <div class="dialog-actions">
+        <button id="deleteEntryBtn" type="button" class="danger-btn">Delete</button>
+        <div class="grow"></div>
+        <button id="cancelEditBtn" type="button" class="ghost-btn">Cancel</button>
+        <button id="saveEditBtn" type="submit" class="primary-btn">Save changes</button>
+      </div>
+      <div id="editMessage" class="message" aria-live="polite"></div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog" class="edit-dialog">
+    <form id="settingsForm" method="dialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Settings & backup</h2>
+          <div class="muted">Stored locally on this device.</div>
+        </div>
+        <button id="closeSettingsBtn" type="button" class="icon-btn" aria-label="Close">×</button>
+      </div>
+      <div class="field"><label for="settingsEmployee">Default employee name</label><input id="settingsEmployee" type="text" /></div>
+      <div class="field"><label for="settingsDefaultLocation">Default location (optional)</label><input id="settingsDefaultLocation" type="text" /></div>
+      <div class="action-row wrap">
+        <button id="exportBtn" type="button" class="secondary-btn">Export backup</button>
+        <label class="secondary-btn file-button">Import backup<input id="importFile" type="file" accept="application/json" hidden /></label>
+      </div>
+      <div class="help">Backups contain your entries and settings. Photos are included.</div>
+      <div class="dialog-actions">
+        <div class="grow"></div>
+        <button id="saveSettingsBtn" type="submit" class="primary-btn">Save settings</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

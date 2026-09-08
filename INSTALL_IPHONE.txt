@@ -1,0 +1,33 @@
+OFFLINE PHOTO TIMESHEET — IPHONE INSTALL
+
+IMPORTANT: The app needs internet only for the initial install/load. After that, normal use is offline.
+
+1. Upload the contents of this folder to an HTTPS static website.
+   Easy options: GitHub Pages, Cloudflare Pages, or Netlify.
+
+2. On the iPhone, open the HTTPS address in SAFARI.
+
+3. Tap the Share button, then "Add to Home Screen".
+
+4. Open the new Timesheet icon once while still online.
+   This lets the app cache all of its files for offline use.
+
+5. Test it: turn on Airplane Mode, open Timesheet, add a test entry, then open Weekly sheet.
+
+LOCATION:
+- Tap "Use current GPS" when you want coordinates saved.
+- iPhone location permission must be allowed.
+- GPS coordinates can work without internet.
+- Type the job/site name manually because turning GPS coordinates into a street address generally requires an internet geocoding service.
+
+PRINTING:
+- Open Weekly sheet.
+- Choose the Friday/week ending date.
+- Tap any white cell to edit it.
+- Tap "Save sheet edits".
+- Tap "Print / Save PDF".
+
+BACKUP:
+- Tap the gear icon.
+- Use "Export backup" regularly.
+- The backup includes entries, settings, sheet edits, and photos.
