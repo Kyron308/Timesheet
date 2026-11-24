@@ -2,6 +2,7 @@
 
 const DB_NAME = 'offline-photo-timesheet';
 const DB_VERSION = 1;
+const DEFAULT_BREAK_MINUTES = 30;
 const PRESET_EQUIPMENT = [
   'Posi track',
   'Kasandi Truck',
@@ -118,20 +119,18 @@ function timeToMinutes(t) {
   return h * 60 + m;
 }
 
-function manualHours(entry) {
-  if (entry.overrideHours == null || entry.overrideHours === '') return null;
-  const override = Number(entry.overrideHours);
-  return Number.isFinite(override) && override >= 0 ? override : null;
+function entryMinutes(entry) {
+  const override = entry.overrideHours;
+  const hours = Number(override);
+  if (override != null && override !== '' && Number.isFinite(hours) && hours >= 0) return hours * 60;
+  return calculatedMinutes(entry);
 }
 
-function entryMinutes(entry) {
-  const hours = manualHours(entry);
-  if (hours !== null) return hours * 60;
-  // Older entries may have been saved with only times and a break.
-  const start = timeToMinutes(entry.startTime);
-  let finish = timeToMinutes(entry.finishTime);
+function calculatedMinutes({ startTime, finishTime, breakMinutes }) {
+  const start = timeToMinutes(startTime);
+  let finish = timeToMinutes(finishTime);
   if (finish < start) finish += 24 * 60;
-  const breakMins = Math.max(0, Number(entry.breakMinutes) || 0);
+  const breakMins = Math.max(0, Number(breakMinutes) || 0);
   return Math.max(0, finish - start - breakMins);
 }
 
@@ -225,12 +224,36 @@ function queueDraftSave() {
   }, 250);
 }
 
+function readWorkTimes(prefix) {
+  return {
+    startTime: $(`#${prefix}Start`).value,
+    finishTime: $(`#${prefix}Finish`).value,
+    breakMinutes: $(`#${prefix}Break`).value
+  };
+}
+
+function sameWorkTimes(entry, workTimes) {
+  return entry.startTime === workTimes.startTime &&
+    entry.finishTime === workTimes.finishTime &&
+    (Number(entry.breakMinutes) || 0) === Number(workTimes.breakMinutes);
+}
+
+function renderHours(prefix, entry) {
+  const workTimes = readWorkTimes(prefix);
+  const output = $(`#${prefix}Hours`);
+  if (!workTimes.startTime || !workTimes.finishTime || workTimes.breakMinutes === '') {
+    output.value = '—';
+    return;
+  }
+  const minutes = entry && sameWorkTimes(entry, workTimes)
+    ? entryMinutes(entry)
+    : calculatedMinutes(workTimes);
+  output.value = durationLabel(minutes);
+}
+
 function syncDraftFromInputs() {
+  Object.assign(activeDraft, readWorkTimes('current'));
   activeDraft.date = $('#currentDate').value;
-  activeDraft.startTime = $('#currentStart').value;
-  activeDraft.finishTime = $('#currentFinish').value;
-  activeDraft.overrideHours = $('#currentHours').value;
-  activeDraft.breakMinutes = $('#currentBreak').value;
   activeDraft.title = $('#currentTitle').value;
   activeDraft.description = $('#currentDescription').value;
   activeDraft.location = $('#currentLocation').value;
@@ -250,8 +273,8 @@ function syncInputsFromDraft() {
   $('#currentDate').value = activeDraft.date;
   $('#currentStart').value = activeDraft.startTime;
   $('#currentFinish').value = activeDraft.finishTime;
-  $('#currentHours').value = activeDraft.overrideHours;
   $('#currentBreak').value = activeDraft.breakMinutes;
+  renderHours('current');
   $('#currentTitle').value = activeDraft.title || '';
   $('#currentDescription').value = activeDraft.description || '';
   $('#currentLocation').value = activeDraft.location || settings.defaultLocation || '';
@@ -281,8 +304,7 @@ function newDraft() {
     date: localDateString(),
     startTime: '',
     finishTime: '',
-    overrideHours: '',
-    breakMinutes: '',
+    breakMinutes: DEFAULT_BREAK_MINUTES,
     photos: [],
     title: '',
     description: '',
@@ -329,7 +351,7 @@ async function saveCurrentEntry(event) {
     startTime: activeDraft.startTime,
     finishTime: activeDraft.finishTime,
     breakMinutes: Number(activeDraft.breakMinutes),
-    overrideHours: Number(activeDraft.overrideHours),
+    overrideHours: '',
     title,
     description: activeDraft.description.trim(),
     location: activeDraft.location.trim(),
@@ -479,7 +501,7 @@ async function openEdit(id) {
   $('#editStart').value = entry.startTime || '';
   $('#editFinish').value = entry.finishTime || '';
   $('#editBreak').value = Number(entry.breakMinutes) || 0;
-  $('#editHours').value = Number((entryMinutes(entry) / 60).toFixed(2));
+  renderHours('edit', entry);
   $('#editTitle').value = entry.title || '';
   $('#editDescription').value = entry.description || '';
   $('#editLocation').value = entry.location || '';
@@ -520,17 +542,15 @@ async function saveEdit(event) {
     return;
   }
   const photos = editPhotos;
-  const enteredHours = $('#editHours').valueAsNumber;
-  const previousHours = manualHours(entry) ?? entryMinutes(entry) / 60;
+  const workTimes = readWorkTimes('edit');
   const updated = {
     ...entry,
     updatedAt: Date.now(),
     date: $('#editDate').value,
-    startTime: $('#editStart').value,
-    finishTime: $('#editFinish').value,
-    breakMinutes: Math.max(0, Number($('#editBreak').value) || 0),
-    // Preserve fractional minutes from old entries when Hours worked was left alone.
-    overrideHours: enteredHours === Number(previousHours.toFixed(2)) ? previousHours : enteredHours,
+    ...workTimes,
+    breakMinutes: Number(workTimes.breakMinutes),
+    // Historical manual totals apply until the work times or break are edited.
+    overrideHours: sameWorkTimes(entry, workTimes) ? entry.overrideHours : '',
     title,
     description: $('#editDescription').value.trim(),
     location: $('#editLocation').value.trim(),
@@ -836,9 +856,12 @@ async function init() {
   const draft = await idbGet('drafts', 'current');
   activeDraft = newDraft();
   if (draft) {
-    const { startedAt, ...savedDraft } = draft;
+    const { startedAt, overrideHours, ...savedDraft } = draft;
     activeDraft = { ...activeDraft, ...savedDraft, photos: savedDraft.photos || [] };
     activeDraft.date = savedDraft.date || localDateString(startedAt ?? Date.now());
+    if (activeDraft.breakMinutes == null || activeDraft.breakMinutes === '') {
+      activeDraft.breakMinutes = DEFAULT_BREAK_MINUTES;
+    }
   }
 
   $('#weekEnding').value = upcomingFriday();
@@ -870,9 +893,19 @@ async function init() {
   });
   $('#gpsBtn').addEventListener('click', useCurrentGps);
 
-  ['currentDate', 'currentStart', 'currentFinish', 'currentHours', 'currentBreak',
-    'currentTitle', 'currentDescription', 'currentLocation', 'currentEquipment'].forEach(id => {
+  ['currentDate', 'currentTitle', 'currentDescription', 'currentLocation', 'currentEquipment'].forEach(id => {
     $(`#${id}`).addEventListener('input', queueDraftSave);
+  });
+
+  ['Start', 'Finish', 'Break'].forEach(field => {
+    $(`#current${field}`).addEventListener('input', () => {
+      renderHours('current');
+      queueDraftSave();
+    });
+    $(`#edit${field}`).addEventListener('input', () => {
+      const entry = entries.find(e => e.id === $('#editId').value);
+      renderHours('edit', entry);
+    });
   });
 
   $('#currentPhotos').addEventListener('change', async event => {

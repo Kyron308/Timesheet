@@ -64,6 +64,25 @@ main { max-width: 900px; margin: 0 auto; padding: 12px; }
 .field-grid { display: grid; gap: 12px; }
 .field-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .field input[type="date"], .field input[type="time"] { min-width: 0; }
+.work-timing .field { min-width: 0; }
+.work-timing input {
+  display: block;
+  max-width: 100%;
+  height: 44px;
+  padding: 4px 8px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.work-timing input::-webkit-date-and-time-value { margin: 0; text-align: start; }
+.work-timing output {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+}
 .field-actions-bottom { display: flex; align-items: end; }
 .help { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
 .gps-readout { font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
@@ -123,7 +142,7 @@ button:disabled { opacity: .45; }
 .grow { flex:1; }
 .file-button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; cursor:pointer; }
 @media (max-width: 640px) {
-  .field-grid.two, .filter-row { grid-template-columns: minmax(0, 1fr); }
+  .field-grid.two:not(.work-timing), .filter-row { grid-template-columns: minmax(0, 1fr); }
   .entry-card { grid-template-columns: 64px 1fr; }
   .entry-card.no-photo { grid-template-columns: 1fr; }
   .entry-thumb { width:64px; height:64px; }

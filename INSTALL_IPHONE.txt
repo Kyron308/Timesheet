@@ -12,8 +12,14 @@ IMPORTANT: The app needs internet only for the initial install/load. After that,
 4. Open the new Timesheet icon once while still online.
    This lets the app cache all of its files for offline use.
 
-5. Turn on Airplane Mode and open Timesheet. Enter a work date, hours worked,
-   start time and finish time. Save the test entry and open Weekly sheet.
+5. Turn on Airplane Mode and open Timesheet. Enter a work date and set the
+   start time to 8 am and finish time to noon. With the default 30-minute
+   break, Hours worked should show 3h 30m. Save the test entry and open
+   Weekly sheet.
+
+You can change the break on each entry. Enter 0 if you took no break.
+Existing entries keep their saved totals until you change the start time,
+finish time or break.
 
 LOCATION:
 - Tap "Use current GPS" when you want coordinates saved.

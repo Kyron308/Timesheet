@@ -1,4 +1,4 @@
-const CACHE = 'photo-timesheet-v3';
+const CACHE = 'photo-timesheet-v4';
 const ASSETS = [
   './',
   './index.html',

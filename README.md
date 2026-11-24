@@ -3,9 +3,10 @@
 This is an installable offline-first timesheet web app designed for iPhone.
 
 ## What it does
-- Enter the work date, hours worked, start time and finish time when you log an entry.
+- Enter the work date, start time and finish time when you log an entry. Timesheet calculates Hours worked from those times and the break.
+- New entries start with a 30-minute break that you can change. Existing entries keep their saved totals until you change the start time, finish time or break.
 - Attach optional work photos when you log or edit an entry. Saved photos stay attached unless you remove them.
-- Record breaks, a title, a description, the location, GPS coordinates and machinery or equipment.
+- Record a title, a description, the location, GPS coordinates and machinery or equipment.
 - Save everything locally in IndexedDB on the phone.
 - Edit or delete old entries.
 - Works offline after the first successful load/install.
