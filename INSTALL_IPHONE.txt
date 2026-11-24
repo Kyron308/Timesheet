@@ -12,7 +12,8 @@ IMPORTANT: The app needs internet only for the initial install/load. After that,
 4. Open the new Timesheet icon once while still online.
    This lets the app cache all of its files for offline use.
 
-5. Test it: turn on Airplane Mode, open Timesheet, add a test entry, then open Weekly sheet.
+5. Turn on Airplane Mode and open Timesheet. Enter a work date, hours worked,
+   start time and finish time. Save the test entry and open Weekly sheet.
 
 LOCATION:
 - Tap "Use current GPS" when you want coordinates saved.

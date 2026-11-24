@@ -3,8 +3,9 @@
 This is an installable offline-first timesheet web app designed for iPhone.
 
 ## What it does
-- Take/select work photos; selecting the first photo automatically starts the timer.
-- Add editable title, description, location, GPS coordinates, machinery/equipment, date, start/finish times, breaks and optional manual total-hour override.
+- Enter the work date, hours worked, start time and finish time when you log an entry.
+- Attach optional work photos when you log or edit an entry. Saved photos stay attached unless you remove them.
+- Record breaks, a title, a description, the location, GPS coordinates and machinery or equipment.
 - Save everything locally in IndexedDB on the phone.
 - Edit or delete old entries.
 - Works offline after the first successful load/install.

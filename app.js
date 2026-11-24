@@ -22,18 +22,7 @@ const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 let db;
 let entries = [];
 let settings = { employee: '', defaultLocation: '' };
-let activeDraft = {
-  key: 'current',
-  startedAt: null,
-  photos: [],
-  title: '',
-  description: '',
-  location: '',
-  lat: '',
-  lng: '',
-  equipment: ''
-};
-let activeTimer = null;
+let activeDraft;
 let editPhotos = [];
 let currentSheetOverrides = null;
 let draftSaveTimer = null;
@@ -75,9 +64,10 @@ function idbGet(store, key) {
 
 function idbPut(store, value) {
   return new Promise((resolve, reject) => {
-    const req = tx(store, 'readwrite').put(value);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    const write = db.transaction(store, 'readwrite');
+    const req = write.objectStore(store).put(value);
+    write.oncomplete = () => resolve(req.result);
+    write.onabort = () => reject(write.error);
   });
 }
 
@@ -95,11 +85,6 @@ function localDateString(dateOrMs = Date.now()) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
-}
-
-function localTimeString(dateOrMs = Date.now()) {
-  const d = new Date(dateOrMs);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 function parseLocalDate(dateString) {
@@ -133,22 +118,21 @@ function timeToMinutes(t) {
   return h * 60 + m;
 }
 
-function entryMinutes(entry) {
+function manualHours(entry) {
+  if (entry.overrideHours == null || entry.overrideHours === '') return null;
   const override = Number(entry.overrideHours);
-  if (entry.overrideHours !== '' && Number.isFinite(override) && override >= 0) return Math.round(override * 60);
-  let start = timeToMinutes(entry.startTime);
+  return Number.isFinite(override) && override >= 0 ? override : null;
+}
+
+function entryMinutes(entry) {
+  const hours = manualHours(entry);
+  if (hours !== null) return hours * 60;
+  // Older entries may have been saved with only times and a break.
+  const start = timeToMinutes(entry.startTime);
   let finish = timeToMinutes(entry.finishTime);
   if (finish < start) finish += 24 * 60;
   const breakMins = Math.max(0, Number(entry.breakMinutes) || 0);
   return Math.max(0, finish - start - breakMins);
-}
-
-function durationClock(ms) {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function durationLabel(minutes) {
@@ -236,10 +220,17 @@ async function saveDraftNow() {
 function queueDraftSave() {
   clearTimeout(draftSaveTimer);
   $('#saveStatus').textContent = 'Saving…';
-  draftSaveTimer = setTimeout(() => saveDraftNow().catch(console.error), 250);
+  draftSaveTimer = setTimeout(() => {
+    if (!$('#saveEntryBtn').disabled) saveDraftNow().catch(console.error);
+  }, 250);
 }
 
 function syncDraftFromInputs() {
+  activeDraft.date = $('#currentDate').value;
+  activeDraft.startTime = $('#currentStart').value;
+  activeDraft.finishTime = $('#currentFinish').value;
+  activeDraft.overrideHours = $('#currentHours').value;
+  activeDraft.breakMinutes = $('#currentBreak').value;
   activeDraft.title = $('#currentTitle').value;
   activeDraft.description = $('#currentDescription').value;
   activeDraft.location = $('#currentLocation').value;
@@ -248,6 +239,7 @@ function syncDraftFromInputs() {
 
 function renderCurrentPhotos() {
   renderPhotoStrip($('#currentPhotoStrip'), activeDraft.photos || [], true, async index => {
+    if ($('#saveEntryBtn').disabled) return;
     activeDraft.photos.splice(index, 1);
     renderCurrentPhotos();
     await saveDraftNow();
@@ -255,6 +247,11 @@ function renderCurrentPhotos() {
 }
 
 function syncInputsFromDraft() {
+  $('#currentDate').value = activeDraft.date;
+  $('#currentStart').value = activeDraft.startTime;
+  $('#currentFinish').value = activeDraft.finishTime;
+  $('#currentHours').value = activeDraft.overrideHours;
+  $('#currentBreak').value = activeDraft.breakMinutes;
   $('#currentTitle').value = activeDraft.title || '';
   $('#currentDescription').value = activeDraft.description || '';
   $('#currentLocation').value = activeDraft.location || settings.defaultLocation || '';
@@ -272,41 +269,20 @@ function updateGpsReadout() {
   }
 }
 
-function startActiveJob() {
-  if (activeDraft.startedAt) return;
-  activeDraft.startedAt = Date.now();
-  startTimer();
-  queueDraftSave();
+function setDraftBusy(busy) {
+  $('#saveEntryBtn').disabled = busy;
+  $('#cancelBtn').disabled = busy;
+  $('#currentPhotos').disabled = busy;
 }
 
-function startTimer() {
-  clearInterval(activeTimer);
-  if (!activeDraft.startedAt) {
-    $('#liveTimer').textContent = '00:00:00';
-    $('#currentStatus').textContent = 'Take a photo or tap Start.';
-    $('#startBtn').disabled = false;
-    $('#finishBtn').disabled = true;
-    $('#cancelBtn').disabled = true;
-    return;
-  }
-  const update = () => {
-    $('#liveTimer').textContent = durationClock(Date.now() - activeDraft.startedAt);
-  };
-  update();
-  activeTimer = setInterval(update, 1000);
-  const started = new Date(activeDraft.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  $('#currentStatus').textContent = `Started ${started}`;
-  $('#startBtn').disabled = true;
-  $('#finishBtn').disabled = false;
-  $('#cancelBtn').disabled = false;
-}
-
-async function clearDraft() {
-  clearInterval(activeTimer);
-  revokeStripUrls($('#currentPhotoStrip'));
-  activeDraft = {
+function newDraft() {
+  return {
     key: 'current',
-    startedAt: null,
+    date: localDateString(),
+    startTime: '',
+    finishTime: '',
+    overrideHours: '',
+    breakMinutes: '',
     photos: [],
     title: '',
     description: '',
@@ -315,51 +291,73 @@ async function clearDraft() {
     lng: '',
     equipment: ''
   };
-  $('#currentPhotos').value = '';
-  $('#currentMessage').textContent = '';
-  syncInputsFromDraft();
-  startTimer();
-  await idbPut('drafts', activeDraft);
 }
 
-async function finishActiveJob() {
+function resetDraft() {
+  clearTimeout(draftSaveTimer);
+  activeDraft = newDraft();
+  $('#currentPhotos').value = '';
+  syncInputsFromDraft();
+}
+
+function storeEntryAndClearDraft(entry) {
+  return new Promise((resolve, reject) => {
+    const write = db.transaction(['entries', 'drafts'], 'readwrite');
+    write.oncomplete = () => resolve();
+    write.onabort = () => reject(write.error);
+    write.objectStore('entries').add(entry);
+    write.objectStore('drafts').delete(activeDraft.key);
+  });
+}
+
+async function saveCurrentEntry(event) {
+  event.preventDefault();
+  if ($('#saveEntryBtn').disabled) return;
   syncDraftFromInputs();
   const title = activeDraft.title.trim();
-  if (!activeDraft.startedAt) {
-    $('#currentMessage').textContent = 'Start the job first.';
-    return;
-  }
   if (!title) {
     $('#currentMessage').textContent = 'Add a title before saving.';
     $('#currentTitle').focus();
     return;
   }
-  const end = Date.now();
+  const now = Date.now();
   const entry = {
     id: uid(),
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    date: localDateString(activeDraft.startedAt),
-    startTime: localTimeString(activeDraft.startedAt),
-    finishTime: localTimeString(end),
-    breakMinutes: 0,
-    overrideHours: '',
+    createdAt: now,
+    updatedAt: now,
+    date: activeDraft.date,
+    startTime: activeDraft.startTime,
+    finishTime: activeDraft.finishTime,
+    breakMinutes: Number(activeDraft.breakMinutes),
+    overrideHours: Number(activeDraft.overrideHours),
     title,
     description: activeDraft.description.trim(),
     location: activeDraft.location.trim(),
     lat: activeDraft.lat,
     lng: activeDraft.lng,
     equipment: activeDraft.equipment.trim(),
-    photos: activeDraft.photos || []
+    photos: [...activeDraft.photos]
   };
-  await idbPut('entries', entry);
-  entries.push(entry);
-  await clearDraft();
+  clearTimeout(draftSaveTimer);
+  setDraftBusy(true);
+  try {
+    await storeEntryAndClearDraft(entry);
+    entries.push(entry);
+    resetDraft();
+    $('#saveStatus').textContent = 'Saved on this iPhone';
+    $('#currentMessage').textContent = 'Saved.';
+  } catch (err) {
+    console.error(err);
+    $('#currentMessage').textContent = 'Could not save this entry. Your draft is still here.';
+    queueDraftSave();
+    return;
+  } finally {
+    setDraftBusy(false);
+  }
   await renderAllEntries();
-  $('#currentMessage').textContent = 'Saved.';
 }
 
-async function useCurrentGps() {
+function useCurrentGps() {
   const btn = $('#gpsBtn');
   const msg = $('#currentMessage');
   if (!navigator.geolocation) {
@@ -369,18 +367,22 @@ async function useCurrentGps() {
   btn.disabled = true;
   btn.textContent = 'Getting GPS…';
   msg.textContent = 'Waiting for iPhone location…';
-  navigator.geolocation.getCurrentPosition(async pos => {
-    activeDraft.lat = Number(pos.coords.latitude);
-    activeDraft.lng = Number(pos.coords.longitude);
+  const draft = activeDraft;
+  navigator.geolocation.getCurrentPosition(pos => {
+    btn.disabled = false;
+    btn.textContent = 'Use current GPS';
+    if (draft !== activeDraft) return;
+    draft.lat = Number(pos.coords.latitude);
+    draft.lng = Number(pos.coords.longitude);
     updateGpsReadout();
-    await saveDraftNow();
-    msg.textContent = `GPS saved (accuracy about ${Math.round(pos.coords.accuracy)} m).`;
-    btn.disabled = false;
-    btn.textContent = 'Use current GPS';
+    queueDraftSave();
+    msg.textContent = `GPS captured (accuracy about ${Math.round(pos.coords.accuracy)} m).`;
   }, err => {
-    msg.textContent = err.code === 1 ? 'Location permission was not allowed.' : 'Could not get GPS. You can still type the location manually.';
     btn.disabled = false;
     btn.textContent = 'Use current GPS';
+    if (draft === activeDraft) {
+      msg.textContent = err.code === 1 ? 'Location permission was not allowed.' : 'Could not get GPS. You can still type the location manually.';
+    }
   }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
 }
 
@@ -477,7 +479,7 @@ async function openEdit(id) {
   $('#editStart').value = entry.startTime || '';
   $('#editFinish').value = entry.finishTime || '';
   $('#editBreak').value = Number(entry.breakMinutes) || 0;
-  $('#editOverride').value = entry.overrideHours ?? '';
+  $('#editHours').value = Number((entryMinutes(entry) / 60).toFixed(2));
   $('#editTitle').value = entry.title || '';
   $('#editDescription').value = entry.description || '';
   $('#editLocation').value = entry.location || '';
@@ -487,19 +489,28 @@ async function openEdit(id) {
   $('#editNewPhotos').value = '';
   $('#editMessage').textContent = '';
   editPhotos = [...(entry.photos || [])];
+  setEditBusy(false);
   renderEditPhotos();
   $('#editDialog').showModal();
 }
 
 function renderEditPhotos() {
   renderPhotoStrip($('#editPhotoStrip'), editPhotos, true, index => {
+    if ($('#saveEditBtn').disabled) return;
     editPhotos.splice(index, 1);
     renderEditPhotos();
   });
 }
 
+function setEditBusy(busy) {
+  $('#saveEditBtn').disabled = busy;
+  $('#deleteEntryBtn').disabled = busy;
+  $('#editNewPhotos').disabled = busy;
+}
+
 async function saveEdit(event) {
   event.preventDefault();
+  if ($('#saveEditBtn').disabled) return;
   const id = $('#editId').value;
   const entry = entries.find(e => e.id === id);
   if (!entry) return;
@@ -508,6 +519,9 @@ async function saveEdit(event) {
     $('#editMessage').textContent = 'Title is required.';
     return;
   }
+  const photos = editPhotos;
+  const enteredHours = $('#editHours').valueAsNumber;
+  const previousHours = manualHours(entry) ?? entryMinutes(entry) / 60;
   const updated = {
     ...entry,
     updatedAt: Date.now(),
@@ -515,16 +529,29 @@ async function saveEdit(event) {
     startTime: $('#editStart').value,
     finishTime: $('#editFinish').value,
     breakMinutes: Math.max(0, Number($('#editBreak').value) || 0),
-    overrideHours: $('#editOverride').value === '' ? '' : Math.max(0, Number($('#editOverride').value) || 0),
+    // Preserve fractional minutes from old entries when Hours worked was left alone.
+    overrideHours: enteredHours === Number(previousHours.toFixed(2)) ? previousHours : enteredHours,
     title,
     description: $('#editDescription').value.trim(),
     location: $('#editLocation').value.trim(),
     lat: $('#editLat').value === '' ? '' : Number($('#editLat').value),
     lng: $('#editLng').value === '' ? '' : Number($('#editLng').value),
     equipment: $('#editEquipment').value.trim(),
-    photos: editPhotos
+    photos: [...photos]
   };
-  await idbPut('entries', updated);
+  setEditBusy(true);
+  const closeButtons = [$('#closeEditBtn'), $('#cancelEditBtn')];
+  closeButtons.forEach(button => { button.disabled = true; });
+  try {
+    await idbPut('entries', updated);
+  } catch (err) {
+    console.error(err);
+    $('#editMessage').textContent = 'Could not save these changes. Please try again.';
+    return;
+  } finally {
+    setEditBusy(false);
+    closeButtons.forEach(button => { button.disabled = false; });
+  }
   const idx = entries.findIndex(e => e.id === id);
   entries[idx] = updated;
   $('#editDialog').close();
@@ -544,6 +571,14 @@ async function deleteEditedEntry() {
 
 function weekDates(weekEnding) {
   return [-4, -3, -2, -1, 0].map(delta => addDays(weekEnding, delta));
+}
+
+function formatSheetDay(dateString) {
+  const date = parseLocalDate(dateString);
+  const weekday = date.toLocaleDateString('en', { weekday: 'short' }).toUpperCase();
+  const day = date.getDate();
+  const suffix = day >= 11 && day <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[day % 10] ?? 'th');
+  return `${weekday} ${day}${suffix}`;
 }
 
 function createCell(text = '', key = '', opts = {}) {
@@ -578,6 +613,9 @@ async function renderSheet(ignoreOverrides = false) {
   const weekEnding = $('#weekEnding').value || upcomingFriday();
   const week = sheetEntriesForWeek(weekEnding);
   const dates = weekDates(weekEnding);
+  $$('.sheet-day', $('#timesheetPrint')).forEach((header, index) => {
+    header.textContent = formatSheetDay(dates[index]);
+  });
   const tbody = $('#timesheetBody');
   tbody.innerHTML = '';
   $('#sheetEmployee').textContent = $('#employeeName').value || settings.employee || 'Employee';
@@ -717,7 +755,7 @@ async function saveSettings(event) {
   if (!activeDraft.location) {
     activeDraft.location = settings.defaultLocation;
     $('#currentLocation').value = activeDraft.location;
-    await saveDraftNow();
+    queueDraftSave();
   }
   $('#settingsDialog').close();
   await renderSheet();
@@ -796,12 +834,15 @@ async function init() {
   await loadSettings();
   entries = await idbGetAll('entries');
   const draft = await idbGet('drafts', 'current');
-  if (draft) activeDraft = { ...activeDraft, ...draft, photos: draft.photos || [] };
-  else activeDraft.location = settings.defaultLocation || '';
+  activeDraft = newDraft();
+  if (draft) {
+    const { startedAt, ...savedDraft } = draft;
+    activeDraft = { ...activeDraft, ...savedDraft, photos: savedDraft.photos || [] };
+    activeDraft.date = savedDraft.date || localDateString(startedAt ?? Date.now());
+  }
 
   $('#weekEnding').value = upcomingFriday();
   syncInputsFromDraft();
-  startTimer();
   await renderAllEntries();
   updateOnlineBadge();
 
@@ -809,26 +850,50 @@ async function init() {
   window.addEventListener('offline', updateOnlineBadge);
 
   $$('.tab').forEach(tab => tab.addEventListener('click', () => setView(tab.dataset.view)));
-  $('#startBtn').addEventListener('click', startActiveJob);
-  $('#finishBtn').addEventListener('click', () => finishActiveJob().catch(console.error));
-  $('#cancelBtn').addEventListener('click', () => {
-    if (confirm('Cancel the current job? The unsaved draft and its photos will be cleared.')) clearDraft().catch(console.error);
+  setDraftBusy(false);
+  $('#currentForm').addEventListener('submit', event => saveCurrentEntry(event).catch(console.error));
+  $('#cancelBtn').addEventListener('click', async () => {
+    if (!confirm('Discard this draft and its photos?')) return;
+    clearTimeout(draftSaveTimer);
+    setDraftBusy(true);
+    try {
+      await idbDelete('drafts', activeDraft.key);
+      resetDraft();
+      $('#saveStatus').textContent = 'Saved on this iPhone';
+      $('#currentMessage').textContent = '';
+    } catch (err) {
+      console.error(err);
+      $('#currentMessage').textContent = 'Could not discard this draft. Please try again.';
+    } finally {
+      setDraftBusy(false);
+    }
   });
   $('#gpsBtn').addEventListener('click', useCurrentGps);
 
-  ['currentTitle', 'currentDescription', 'currentLocation', 'currentEquipment'].forEach(id => {
+  ['currentDate', 'currentStart', 'currentFinish', 'currentHours', 'currentBreak',
+    'currentTitle', 'currentDescription', 'currentLocation', 'currentEquipment'].forEach(id => {
     $(`#${id}`).addEventListener('input', queueDraftSave);
   });
 
   $('#currentPhotos').addEventListener('change', async event => {
-    const newPhotos = await filesToBlobs(event.target.files);
-    if (newPhotos.length) {
-      activeDraft.photos.push(...newPhotos);
-      renderCurrentPhotos();
-      if (!activeDraft.startedAt) startActiveJob();
+    const input = event.currentTarget;
+    setDraftBusy(true);
+    $('#currentMessage').textContent = 'Processing photos…';
+    try {
+      const photos = await filesToBlobs(input.files);
+      if (photos.length) {
+        activeDraft.photos.push(...photos);
+        renderCurrentPhotos();
+      }
       await saveDraftNow();
+      $('#currentMessage').textContent = '';
+    } catch (err) {
+      console.error(err);
+      $('#currentMessage').textContent = 'Could not save photos to this draft.';
+    } finally {
+      input.value = '';
+      setDraftBusy(false);
     }
-    event.target.value = '';
   });
 
   $('#historyFrom').addEventListener('change', renderHistory);
@@ -839,15 +904,33 @@ async function init() {
     renderHistory();
   });
 
-  $('#editForm').addEventListener('submit', saveEdit);
+  $('#editForm').addEventListener('submit', event => saveEdit(event).catch(console.error));
   $('#closeEditBtn').addEventListener('click', () => $('#editDialog').close());
   $('#cancelEditBtn').addEventListener('click', () => $('#editDialog').close());
+  $('#editDialog').addEventListener('cancel', event => {
+    if ($('#cancelEditBtn').disabled) event.preventDefault();
+  });
   $('#deleteEntryBtn').addEventListener('click', () => deleteEditedEntry().catch(console.error));
   $('#editNewPhotos').addEventListener('change', async event => {
-    const blobs = await filesToBlobs(event.target.files);
-    editPhotos.push(...blobs);
-    renderEditPhotos();
-    event.target.value = '';
+    const input = event.currentTarget;
+    const photos = editPhotos;
+    setEditBusy(true);
+    $('#editMessage').textContent = 'Processing photos…';
+    try {
+      const blobs = await filesToBlobs(input.files);
+      if (photos !== editPhotos || !$('#editDialog').open) return;
+      photos.push(...blobs);
+      renderEditPhotos();
+      $('#editMessage').textContent = '';
+    } catch (err) {
+      console.error(err);
+      if (photos === editPhotos) $('#editMessage').textContent = 'Could not add photos. Please try again.';
+    } finally {
+      if (photos === editPhotos) {
+        input.value = '';
+        setEditBusy(false);
+      }
+    }
   });
 
   $('#weekEnding').addEventListener('change', () => renderSheet().catch(console.error));

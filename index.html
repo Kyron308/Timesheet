@@ -32,27 +32,34 @@
 
   <main>
     <section id="view-log" class="view active no-print">
-      <div class="card current-job-card">
-        <div class="current-top">
-          <div>
-            <div class="eyebrow">CURRENT JOB</div>
-            <div id="currentStatus" class="muted">Take a photo or tap Start.</div>
-          </div>
-          <div id="liveTimer" class="timer">00:00:00</div>
+      <form id="currentForm" class="card current-job-card">
+        <h2 class="log-heading">Log work</h2>
+
+        <div class="field">
+          <label for="currentTitle">Title</label>
+          <input id="currentTitle" type="text" placeholder="e.g. General Kasandi maintenance" autocomplete="off" required />
         </div>
 
-        <div id="currentPhotoStrip" class="photo-strip"></div>
+        <div class="field-grid two">
+          <div class="field"><label for="currentDate">Work date</label><input id="currentDate" type="date" required /></div>
+          <div class="field"><label for="currentHours">Hours worked</label><input id="currentHours" type="number" inputmode="decimal" min="0" step="0.01" required /></div>
+        </div>
+
+        <div class="field-grid two">
+          <div class="field"><label for="currentStart">Start time</label><input id="currentStart" type="time" required /></div>
+          <div class="field"><label for="currentFinish">Finish time</label><input id="currentFinish" type="time" required /></div>
+        </div>
+
+        <div class="field">
+          <label for="currentBreak">Break / time off already excluded (minutes)</label>
+          <input id="currentBreak" type="number" inputmode="numeric" min="0" step="1" />
+        </div>
 
         <div class="field">
           <label for="currentPhotos">Photos</label>
           <input id="currentPhotos" type="file" accept="image/*" capture="environment" multiple />
-          <div class="help">Taking/selecting a photo starts the timer automatically.</div>
         </div>
-
-        <div class="field">
-          <label for="currentTitle">Title</label>
-          <input id="currentTitle" type="text" placeholder="e.g. General Kasandi maintenance" autocomplete="off" />
-        </div>
+        <div id="currentPhotoStrip" class="photo-strip"></div>
 
         <div class="field">
           <label for="currentDescription">Description / notes</label>
@@ -91,12 +98,11 @@
         </datalist>
 
         <div class="action-row">
-          <button id="startBtn" type="button" class="secondary-btn">Start</button>
-          <button id="finishBtn" type="button" class="primary-btn" disabled>Finish & save</button>
-          <button id="cancelBtn" type="button" class="ghost-btn" disabled>Cancel</button>
+          <button id="saveEntryBtn" type="submit" class="primary-btn" disabled>Save entry</button>
+          <button id="cancelBtn" type="button" class="ghost-btn">Discard draft</button>
         </div>
         <div id="currentMessage" class="message" aria-live="polite"></div>
-      </div>
+      </form>
 
       <div class="section-head">
         <div>
@@ -159,11 +165,11 @@
               <tr>
                 <th id="sheetEmployee" class="editable" contenteditable="true">Employee</th>
                 <th class="notes-col">NOTES</th>
-                <th>MON</th>
-                <th>TUE</th>
-                <th>WED</th>
-                <th>THU</th>
-                <th>FRI</th>
+                <th class="sheet-day" scope="col">MON</th>
+                <th class="sheet-day" scope="col">TUE</th>
+                <th class="sheet-day" scope="col">WED</th>
+                <th class="sheet-day" scope="col">THU</th>
+                <th class="sheet-day" scope="col">FRI</th>
                 <th>TOTAL</th>
               </tr>
             </thead>
@@ -179,23 +185,22 @@
       <div class="dialog-head">
         <div>
           <h2>Edit work entry</h2>
-          <div class="muted">All fields can be changed.</div>
         </div>
         <button id="closeEditBtn" type="button" class="icon-btn" aria-label="Close">×</button>
       </div>
 
       <input id="editId" type="hidden" />
       <div class="field-grid two">
-        <div class="field"><label for="editDate">Date</label><input id="editDate" type="date" required /></div>
-        <div class="field"><label for="editBreak">Break / time off (minutes)</label><input id="editBreak" type="number" min="0" step="1" value="0" /></div>
+        <div class="field"><label for="editDate">Work date</label><input id="editDate" type="date" required /></div>
+        <div class="field"><label for="editHours">Hours worked</label><input id="editHours" type="number" inputmode="decimal" min="0" step="0.01" required /></div>
       </div>
       <div class="field-grid two">
-        <div class="field"><label for="editStart">Start</label><input id="editStart" type="time" required /></div>
-        <div class="field"><label for="editFinish">Finish</label><input id="editFinish" type="time" required /></div>
+        <div class="field"><label for="editStart">Start time</label><input id="editStart" type="time" required /></div>
+        <div class="field"><label for="editFinish">Finish time</label><input id="editFinish" type="time" required /></div>
       </div>
       <div class="field">
-        <label for="editOverride">Manual total hours override (optional)</label>
-        <input id="editOverride" type="number" min="0" step="0.01" placeholder="Leave blank to calculate automatically" />
+        <label for="editBreak">Break / time off already excluded (minutes)</label>
+        <input id="editBreak" type="number" inputmode="numeric" min="0" step="1" />
       </div>
       <div class="field"><label for="editTitle">Title</label><input id="editTitle" type="text" required /></div>
       <div class="field"><label for="editDescription">Description / notes</label><textarea id="editDescription" rows="3"></textarea></div>
@@ -207,7 +212,7 @@
       <div class="field"><label for="editEquipment">Machinery / equipment</label><input id="editEquipment" type="text" list="equipmentList" /></div>
 
       <div class="field">
-        <label>Add / replace photos</label>
+        <label for="editNewPhotos">Add photos</label>
         <input id="editNewPhotos" type="file" accept="image/*" capture="environment" multiple />
       </div>
       <div id="editPhotoStrip" class="photo-strip"></div>
